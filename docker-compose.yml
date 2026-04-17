@@ -1,12 +1,12 @@
 services:
   tools:
-    image: ghcr.io/feuerwehrhackathon2024/mcp-tools:0.0.3-beta
+    image: ghcr.io/feuerwehrhackathon2024/mcp-tools:latest
     ports:
       - "3002:8000"
     restart: unless-stopped
 
   commandx:
-    image: ghcr.io/feuerwehrhackathon2024/mcp-commandx:0.0.3-beta
+    image: ghcr.io/feuerwehrhackathon2024/mcp-commandx:latest
     ports:
       - "3003:8000"
     restart: unless-stopped
