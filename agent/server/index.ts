@@ -11,17 +11,8 @@ const config = await Bun.file(configPath)
 
 const PORT = 3001;
 
-const BASE_PROMPT = `You are a helpful, knowledgeable assistant. Be concise and direct.
-
-Format your responses using markdown when it improves clarity:
-- Use **bold** for key terms and emphasis
-- Use headings (## / ###) to organize longer answers
-- Use fenced code blocks with language tags for code
-- Use bullet points or numbered lists for sequences
-- Use tables when comparing items
-- Use > blockquotes for callouts or important notes
-
-Keep responses focused. Avoid unnecessary preamble or filler.`;
+const systemPromptPath = join(import.meta.dir, "..", "system-prompt.md");
+const BASE_PROMPT = await Bun.file(systemPromptPath).text();
 
 const TOOLS_PROMPT = `\nYou have access to tools. When calling tools, use the exact parameter names as defined in the tool schemas. Prefer using tools when they can provide accurate, up-to-date information.`;
 
