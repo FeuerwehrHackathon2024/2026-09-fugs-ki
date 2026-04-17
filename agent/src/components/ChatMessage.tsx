@@ -17,13 +17,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
 
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("msg-enter flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] text-sm leading-relaxed",
+          "max-w-[85%] text-base leading-relaxed",
           isUser
-            ? "rounded-2xl bg-[var(--color-user-bubble)] px-4 py-2.5 text-[var(--color-user-text)]"
-            : "rounded-2xl border-l-2 border-[var(--color-accent)]/40 bg-[var(--color-surface-alt)] py-2.5 pl-4 pr-4",
+            ? "rounded-2xl rounded-br-md bg-[var(--color-user-bubble)] px-4 py-2.5 text-[var(--color-user-text)]"
+            : "rounded-2xl rounded-bl-md border-l-2 border-[var(--color-accent)]/30 bg-[var(--color-surface-alt)] py-2.5 pl-4 pr-4",
         )}
       >
         {message.parts.map((part, i) => {
@@ -38,7 +38,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               );
             }
             return (
-              <div key={key} className="prose prose-sm max-w-none break-words">
+              <div key={key} className="prose-chat max-w-none break-words">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
               </div>
             );
@@ -51,14 +51,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
             return (
               <div
                 key={key}
-                className="my-1.5 inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-tool)] px-2.5 py-1 text-xs font-medium text-[var(--color-tool-text)]"
+                className="my-1.5 inline-flex items-center gap-2 rounded-lg bg-[var(--color-tool-bg)] px-2.5 py-1 text-xs font-medium text-[var(--color-tool-text)]"
               >
-                <span className="opacity-60">tool:</span>
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full bg-[var(--color-tool-text)]",
+                    !isDone && "animate-pulse",
+                  )}
+                />
                 <span>{toolName}</span>
                 {isDone ? (
-                  <span className="opacity-60">done</span>
+                  <span className="opacity-50">done</span>
                 ) : (
-                  <span className="animate-pulse">...</span>
+                  <span className="opacity-50">running</span>
                 )}
               </div>
             );

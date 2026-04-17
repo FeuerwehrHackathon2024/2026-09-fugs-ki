@@ -74,15 +74,15 @@ export default function App() {
           <div className="flex-1 px-4 py-6">
             <div className="mx-auto flex max-w-3xl flex-col gap-5">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center gap-3 py-24">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent-soft)]">
+                <div className="flex flex-col items-center gap-4 py-28">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-accent-soft)]">
                     <svg
-                      width="18"
-                      height="18"
+                      width="22"
+                      height="22"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="var(--color-accent)"
-                      strokeWidth="2"
+                      strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       role="img"
@@ -91,9 +91,14 @@ export default function App() {
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </div>
-                  <p className="text-sm text-[var(--color-text-muted)]">
-                    Schreib eine Nachricht um loszulegen
-                  </p>
+                  <div className="text-center">
+                    <p className="text-base font-medium text-[var(--color-text)]">
+                      Wie kann ich helfen?
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                      Schreib eine Nachricht um loszulegen
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -102,15 +107,17 @@ export default function App() {
               ))}
 
               {status === "submitted" && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl border-l-2 border-[var(--color-accent)]/40 bg-[var(--color-surface-alt)] px-4 py-2.5 text-sm text-[var(--color-text-muted)]">
-                    <span className="animate-pulse">Denkt nach...</span>
+                <div className="msg-enter flex justify-start">
+                  <div className="flex items-center gap-2.5 rounded-2xl rounded-bl-md border-l-2 border-[var(--color-accent)]/30 bg-[var(--color-surface-alt)] px-4 py-3">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
                   </div>
                 </div>
               )}
 
               {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="msg-enter rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-bg)] px-4 py-3 text-sm text-[var(--color-error-text)]">
                   {error.message || "Ein Fehler ist aufgetreten."}
                 </div>
               )}

@@ -22,7 +22,7 @@
     "@ai-sdk/mcp": "^1.0.0",
     "@ai-sdk/openai-compatible": "^2.0.0",
     "@ai-sdk/react": "^3.0.0",
-    "@tailwindcss/typography": "^0.5.19",
+    "@fontsource-variable/google-sans-flex": "^5.2.2",
     "ai": "^6.0.0",
     "clsx": "^2.1.1",
     "react": "^19.2.4",
