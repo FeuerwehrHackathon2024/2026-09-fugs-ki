@@ -6,3 +6,11 @@ services:
     volumes:
       - ./agent/config.json:/app/config.json:ro
     restart: unless-stopped
+
+  commandx:
+    build: ./commandx
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./commandx/.env
+    restart: unless-stopped
