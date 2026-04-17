@@ -13,9 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-RUN curl -Ls https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install uv (to shared location)
+RUN curl -Ls https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Copy project files (lockfile important for reproducibility)
 COPY pyproject.toml uv.lock* ./
@@ -27,7 +26,7 @@ RUN uv sync --frozen --no-dev
 COPY . .
 
 # Use non-root user
-RUN useradd -m appuser
+RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port if needed
