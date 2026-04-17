@@ -34,3 +34,8 @@ services:
     volumes:
       - ./agent/config.json:/app/config.json:ro
     restart: unless-stopped
+    depends_on:
+      commandx:
+        condition: service_healthy
+      tools:
+        condition: service_healthy
