@@ -62,7 +62,7 @@ let allTools: Record<string, unknown> = {};
 
 type MCPServerEntry =
   | { command: string; args?: string[]; label?: string }
-  | { url: string; transport?: "sse" | "http"; label?: string };
+  | { url: string; transport?: "sse" | "http"; headers?: Record<string, string>; label?: string };
 
 async function initMCP() {
   const servers: MCPServerEntry[] = config.mcpServers ?? [];
@@ -88,8 +88,8 @@ async function initMCP() {
           : await createMCPClient({
               transport:
                 entry.transport === "sse"
-                  ? { type: "sse" as const, url: entry.url }
-                  : { type: "http" as const, url: entry.url },
+                  ? { type: "sse" as const, url: entry.url, headers: entry.headers }
+                  : { type: "http" as const, url: entry.url, headers: entry.headers },
             });
       mcpClients.push(client);
 
