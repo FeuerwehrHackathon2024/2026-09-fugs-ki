@@ -38,7 +38,7 @@ client = CIMgateClient()
 # MCP Server
 # ---------------------------------------------------------------------------
 
-mcp = FastMCP("CommandX – CIMgate.Connect", json_response=True)
+mcp = FastMCP("CommandX – CIMgate.Connect", json_response=True, host="0.0.0.0", port=8000)
 
 
 @mcp.tool()

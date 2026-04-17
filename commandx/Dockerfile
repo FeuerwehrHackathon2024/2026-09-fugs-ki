@@ -27,7 +27,7 @@ RUN uv sync --frozen --no-dev
 COPY . .
 
 # Use non-root user
-RUN useradd -m appuser
+RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port if needed
@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # Run app via uv
-CMD ["uv", "run", "main.py"]
+CMD ["uv", "run", "--frozen", "main.py"]
