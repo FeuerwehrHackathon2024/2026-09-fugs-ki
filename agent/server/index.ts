@@ -11,19 +11,8 @@ const config = await Bun.file(configPath)
 
 const PORT = 3001;
 
-const BASE_PROMPT = `You are a helpful, knowledgeable assistant. Be concise and direct.
-
-Format your responses using markdown when it improves clarity:
-- Use **bold** for key terms and emphasis
-- Use headings (## / ###) to organize longer answers
-- Use fenced code blocks with language tags for code
-- Use bullet points or numbered lists for sequences
-- Use tables when comparing items
-- Use > blockquotes for callouts or important notes
-
-Keep responses focused. Avoid unnecessary preamble or filler.`;
-
-const TOOLS_PROMPT = `\nYou have access to tools. When calling tools, use the exact parameter names as defined in the tool schemas. Prefer using tools when they can provide accurate, up-to-date information.`;
+const systemPromptPath = join(import.meta.dir, "..", "system-prompt.md");
+const BASE_PROMPT = await Bun.file(systemPromptPath).text();
 
 // --- Models ---
 
@@ -164,8 +153,7 @@ const server = Bun.serve({
         const { messages } = (await req.json()) as { messages: UIMessage[] };
         const modelMessages = await convertToModelMessages(messages);
 
-        const hasTools = Object.keys(allTools).length > 0;
-        const system = `${BASE_PROMPT}${hasTools ? `\n${TOOLS_PROMPT}` : ""}\n\n[Current time: ${new Date().toISOString()}]`;
+        const system = `${BASE_PROMPT}\n\n[Aktuelle Zeit: ${new Date().toISOString()}]`;
 
         const activeModel = models[activeModelIndex];
         console.log(`Chat request → ${activeModel.label}`);

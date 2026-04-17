@@ -14,8 +14,13 @@
   ],
   "mcpServers": [
     {
-      "label": "remote-tools",
-      "url": "http://192.168.1.100:3002/mcp",
+      "label": "tools",
+      "url": "http://tools:8000/mcp",
+      "transport": "http"
+    },
+    {
+      "label": "commandx",
+      "url": "http://commandx:8000/mcp",
       "transport": "http"
     }
   ]
