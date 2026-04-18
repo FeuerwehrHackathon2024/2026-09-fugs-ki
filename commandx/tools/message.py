@@ -13,7 +13,21 @@ client = CIMgateClient()
 
 def read_messages(mission_id: str) -> list[dict]:
     log.info("TOOL  read_messages")
-    return client.get(("mission/" + mission_id + "/message"))
+    messages = client.get(("mission/" + mission_id + "/message"))
+    allowed_keys = {
+        "date",
+        "text",
+        "senderName",
+        "receiverName",
+        "priority",
+        "messageNumber",
+        "messageStatus",
+        "id",
+    }
+    return [
+        {key: message.get(key) for key in allowed_keys if key in message}
+        for message in messages
+    ]
 
 def send_message(mission_id: str, message: str) -> dict:
     log.info("TOOL  send_message")
