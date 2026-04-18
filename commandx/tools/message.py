@@ -49,6 +49,7 @@ def register_message_tools(mcp: FastMCP) -> None:
         Args:
             mission_id (uuid as str): The ID of the mission to which the message should be sent.
             message (str): The content of the message to be sent.
+            receiver_name (str optional): The name of the message receiver. Default is "unbekannter Empfänger".
             Sender is automatically prefilled.
         """)
     mcp.add_tool(
