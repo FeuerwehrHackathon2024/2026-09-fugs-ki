@@ -29,7 +29,7 @@ def read_messages(mission_id: str) -> list[dict]:
         for message in messages
     ]
 
-def send_message(mission_id: str, message: str, ) -> dict:
+def send_message(mission_id: str, message: str) -> dict:
     log.info("TOOL  send_message")
     return client.post(("mission/" + mission_id + "/message"), json={
         "text": message,
