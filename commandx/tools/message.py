@@ -11,9 +11,11 @@ log = logging.getLogger("commandx")
 
 client = CIMgateClient()
 
-def read_messages(mission_id: str) -> list[dict]:
+def read_messages(mission_id: str, limit: int | None = None) -> list[dict]:
     log.info("TOOL  read_messages")
     messages = client.get(("mission/" + mission_id + "/message"))
+    if limit is not None:
+        messages = messages[:limit]
     allowed_keys = {
         "date",
         "text",
@@ -56,5 +58,6 @@ def register_message_tools(mcp: FastMCP) -> None:
         
         Args:
             mission_id (uuid as str): The ID of the mission for which messages should be read.
+            limit (int optional): Maximum number of messages to return. If not provided, all messages will be returned.
         """)
 
