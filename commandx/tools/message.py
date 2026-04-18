@@ -11,15 +11,18 @@ log = logging.getLogger("commandx")
 
 client = CIMgateClient()
 
+def read_messages(mission_id: str) -> list[dict]:
+    log.info("TOOL  read_messages")
+    return client.get(("mission/" + mission_id + "/message"))
+
 def send_message(mission_id: str, message: str) -> list[dict]:
     log.info("TOOL  send_message")
-    return client.post(("message" + mission_id + "/message"), json={
+    return client.post(("mission/" + mission_id + "/message"), json={
         "text": message,
         "sendername": "AI",
         "recivername": "unbekannter Empfänger",
         "messagestatus": 1
     })
-
 
 def register_message_tools(mcp: FastMCP) -> None:
     mcp.add_tool(
