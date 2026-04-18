@@ -15,7 +15,7 @@ def read_messages(mission_id: str) -> list[dict]:
     log.info("TOOL  read_messages")
     return client.get(("mission/" + mission_id + "/message"))
 
-def send_message(mission_id: str, message: str) -> list[dict]:
+def send_message(mission_id: str, message: str) -> dict:
     log.info("TOOL  send_message")
     return client.post(("mission/" + mission_id + "/message"), json={
         "text": message,
