@@ -13,7 +13,7 @@
     }
   ],
   "mcpServers": [
-        {
+    {
       "label": "tools",
       "url": "http://tools:8000/mcp",
       "transport": "http"
