@@ -29,8 +29,6 @@ def read_messages(mission_id: str) -> list[dict]:
         for message in messages
     ]
 
-print(len(str(read_messages("f0c15c77-643c-49cb-9ed4-e15e23ce48ea")[-1])))
-
 def send_message(mission_id: str, message: str, ) -> dict:
     log.info("TOOL  send_message")
     return client.post(("mission/" + mission_id + "/message"), json={
