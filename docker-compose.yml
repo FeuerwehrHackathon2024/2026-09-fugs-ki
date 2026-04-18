@@ -6,7 +6,7 @@ services:
       - "3002:8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -o /dev/null http://localhost:8000/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       start_period: 10s
@@ -21,7 +21,7 @@ services:
       - ./commandx/.env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -o /dev/null http://localhost:8000/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       start_period: 10s
@@ -55,9 +55,3 @@ volumes:
   agentv2-data:
     driver: local
 
-networks:
-  default:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/28

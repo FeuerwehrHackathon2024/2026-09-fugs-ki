@@ -32,5 +32,5 @@ USER appuser
 # Expose port if needed
 EXPOSE 8000
 
-# Run app via uv
-CMD ["uv", "run", "main.py"]
+# Run app via uv without mutating the prebuilt environment at container startup
+CMD ["uv", "run", "--frozen", "main.py"]
