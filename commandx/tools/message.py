@@ -31,12 +31,12 @@ def read_messages(mission_id: str, limit: int | None = None) -> list[dict]:
         for message in messages
     ]
 
-def send_message(mission_id: str, message: str) -> dict:
+def send_message(mission_id: str, message: str, receiver_name: str = "unbekannter Empfänger") -> dict:
     log.info("TOOL  send_message")
     return client.post(("mission/" + mission_id + "/message"), json={
         "text": message,
         "sendername": "AI",
-        "recivername": "unbekannter Empfänger",
+        "recivername": receiver_name,
         "messagestatus": 1
     })
 
