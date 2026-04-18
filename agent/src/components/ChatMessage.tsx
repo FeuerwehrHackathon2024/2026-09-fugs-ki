@@ -13,11 +13,32 @@ function partKey(messageId: string, part: UIMessage["parts"][number], index: num
   return `${messageId}-${part.type}-${index}`;
 }
 
+function partChars(part: UIMessage["parts"][number]): number {
+  if (part.type === "text") return part.text.length;
+  if (isToolUIPart(part)) {
+    let chars = 0;
+    if ("input" in part && part.input) chars += JSON.stringify(part.input).length;
+    if ("output" in part && part.output) chars += JSON.stringify(part.output).length;
+    return chars;
+  }
+  return 0;
+}
+
+function totalChars(message: UIMessage): number {
+  return message.parts.reduce((sum, part) => sum + partChars(part), 0);
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const chars = totalChars(message);
 
   return (
-    <div className={cn("msg-enter flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("msg-enter flex items-end gap-1", isUser ? "justify-end" : "justify-start")}>
+      {!isUser && (
+        <span className="group relative mb-1 cursor-default text-[var(--color-text-muted)] opacity-40 hover:opacity-80" title={`${chars.toLocaleString()} chars`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </span>
+      )}
       <div
         className={cn(
           "max-w-[85%] text-base leading-relaxed",
@@ -48,9 +69,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
             const isDone = part.state === "output-available";
             const toolName =
               part.type === "dynamic-tool" ? part.toolName : part.type.replace(/^tool-/, "");
+            const toolChars = partChars(part);
             return (
               <div
                 key={key}
+                title={`${toolChars.toLocaleString()} chars`}
                 className="my-1.5 inline-flex items-center gap-2 rounded-lg bg-[var(--color-tool-bg)] px-2.5 py-1 text-xs font-medium text-[var(--color-tool-text)]"
               >
                 <span
@@ -72,6 +95,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
           return null;
         })}
       </div>
+      {isUser && (
+        <span className="group relative mb-1 cursor-default text-[var(--color-text-muted)] opacity-40 hover:opacity-80" title={`${chars.toLocaleString()} chars`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </span>
+      )}
     </div>
   );
 }

@@ -49,12 +49,24 @@ def get_mission_by_external_id(external_id: str) -> dict:
 
 def get_mission_resources(mission_id: str) -> list[dict]:
     log.info("TOOL  get_mission_resources  mission_id=%s", mission_id)
-    return client.get(f"mission/{mission_id}/mission-resource")
+    resources = client.get(f"mission/{mission_id}/mission-resource")
+    allowed_fields = [
+        "id",
+        "name",
+        "serviceType",
+        "opta",
+        "mapLongitude",
+        "mapLatitude",
+        "mapAddress",
+        "resourceType",
+        "resourceWorkingStatusEnum",
+    ]
 
-
-def get_mission_messages(mission_id: str) -> list[dict]:
-    log.info("TOOL  get_mission_messages  mission_id=%s", mission_id)
-    return client.get(f"mission/{mission_id}/message")
+    return [
+        {field: resource.get(field) for field in allowed_fields}
+        for resource in resources
+        if isinstance(resource, dict)
+    ]
 
 
 def get_active_missions() -> list[dict]:
@@ -110,14 +122,6 @@ def register_mission_tools(mcp: FastMCP) -> None:
         get_mission_resources,
         name="get_mission_resources",
         description="""Gibt alle eingesetzten Kräfte/Fahrzeuge (MissionResources) eines Einsatzes zurück.
-
-    Args:
-        mission_id: GUID des Einsatzes""",
-    )
-    mcp.add_tool(
-        get_mission_messages,
-        name="get_mission_messages",
-        description="""Gibt alle Nachrichten eines Einsatzes zurück.
 
     Args:
         mission_id: GUID des Einsatzes""",
