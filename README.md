@@ -67,9 +67,9 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
                                   | MCP               - Wetter (DWD)
                                   v                   - Zeit
                          +------------------+
-                         |    CommandX       |
-                         | (FastMCP/Python)  |
-                         |   Port 3003       |
+                         |    CommandX      |
+                         | (FastMCP/Python) |
+                         |   Port 3003      |
                          +------------------+
                           - Einsaetze (CIMgate)
                           - Nachrichten
