@@ -53,7 +53,7 @@ class CIMgateClient:
         )
         log.info("      → %s", resp.status_code)
         resp.raise_for_status()
-        return resp.json()
+        return self._remove_null_values(resp.json())
     
     def post(self, path: str, json: dict[str, Any]) -> Any:
         url = f"{self._base_url}/rest-api/{path.lstrip('/')}"
@@ -69,4 +69,15 @@ class CIMgateClient:
         )
         log.info("      → %s", resp.status_code)
         resp.raise_for_status()
-        return resp.json()
+        return self._remove_null_values(resp.json())
+    
+    def _remove_null_values(self, value):
+        if isinstance(value, dict):
+            return {
+                k: self._remove_null_values(v)
+                for k, v in value.items()
+                if v is not None
+            }
+        if isinstance(value, list):
+            return [self._remove_null_values(v) for v in value if v is not None]
+        return value
