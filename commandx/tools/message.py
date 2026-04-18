@@ -31,5 +31,16 @@ def register_message_tools(mcp: FastMCP) -> None:
         description="""Sends a message to CommandX.
         
         Args:
+            mission_id (str): The ID of the mission to which the message should be sent.
+            message (str): The content of the message to be sent.
+            Sender is automatically prefilled.
+        """)
+    mcp.add_tool(
+        read_messages,
+        name="read_messages",
+        description="""Reads messages from CommandX.
+        
+        Args:
+            mission_id (str): The ID of the mission for which messages should be read.
         """)
 
