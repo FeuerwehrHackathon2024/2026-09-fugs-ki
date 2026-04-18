@@ -6,5 +6,6 @@ from tools.message import register_message_tools
 
 def register_tools(mcp: FastMCP) -> None:
     register_mission_tools(mcp)
+    register_other_tools(mcp)
     register_message_tools(mcp)
 
