@@ -52,11 +52,6 @@ def get_mission_resources(mission_id: str) -> list[dict]:
     return client.get(f"mission/{mission_id}/mission-resource")
 
 
-def get_mission_messages(mission_id: str) -> list[dict]:
-    log.info("TOOL  get_mission_messages  mission_id=%s", mission_id)
-    return client.get(f"mission/{mission_id}/message")
-
-
 def get_active_missions() -> list[dict]:
     log.info("TOOL  get_active_missions")
     params = {
@@ -110,14 +105,6 @@ def register_mission_tools(mcp: FastMCP) -> None:
         get_mission_resources,
         name="get_mission_resources",
         description="""Gibt alle eingesetzten Kräfte/Fahrzeuge (MissionResources) eines Einsatzes zurück.
-
-    Args:
-        mission_id: GUID des Einsatzes""",
-    )
-    mcp.add_tool(
-        get_mission_messages,
-        name="get_mission_messages",
-        description="""Gibt alle Nachrichten eines Einsatzes zurück.
 
     Args:
         mission_id: GUID des Einsatzes""",
