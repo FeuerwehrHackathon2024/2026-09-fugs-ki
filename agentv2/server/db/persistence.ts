@@ -64,7 +64,7 @@ function saveChat(chat: ChatThread, sessionId: string): void {
       INSERT OR REPLACE INTO activities (id, chat_id, label, detail, tone, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    actStmt.run(activity.id, chat.id, activity.label, activity.detail, activity.tone, activity.createdAt || new Date().toISOString());
+    actStmt.run(activity.id, chat.id, activity.label, activity.detail, activity.tone, new Date().toISOString());
   }
   
   // Save canvas items
@@ -86,7 +86,7 @@ function saveChat(chat: ChatThread, sessionId: string): void {
       turn.id,
       chat.id,
       turn.userMessageId,
-      turn.assistantMessageId,
+      turn.assistantMessageId ?? null,
       turn.status,
       turn.startedAt,
       turn.completedAt || null,

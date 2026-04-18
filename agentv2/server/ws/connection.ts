@@ -1,11 +1,12 @@
 import { createActivity, createChat, createSession, snapshotSession, type ActivityItem, type SessionSnapshot, type SessionState } from "../state";
 import { getRuntimeModel, type RuntimeConfig } from "../config/models";
 import { streamOpenAICompatibleChat, type OpenAIConversationMessage, type OpenAIToolDefinition, type OpenAIToolCall } from "../openai";
-import { createCanvasNote, type CanvasItem } from "../../shared/canvas";
+import { createCanvasNote, type CanvasItem, type CanvasMapItem, type CanvasMapPolygon, type CanvasMapLabel, type CanvasMapWind } from "../../shared/canvas";
 import { createTurn, summarizeTurn, type ChatTurn, type TurnActionItem } from "../../shared/turn";
 import { saveSession, loadSession } from "../db/persistence";
 import { createSessionCookieHeader } from "../http/cookies";
 import {
+  createChartItem,
   createDiagramItem,
   createImageItem,
   createMapItem,
@@ -45,7 +46,13 @@ interface ClientChatEvent {
   text: string;
 }
 
-type ClientEvent = ClientInitEvent | ClientNewChatEvent | ClientSwitchChatEvent | ClientChatEvent;
+interface ClientCanvasItemRemoveEvent {
+  type: "canvas_item_remove";
+  chatId: string;
+  itemId: string;
+}
+
+type ClientEvent = ClientInitEvent | ClientNewChatEvent | ClientSwitchChatEvent | ClientChatEvent | ClientCanvasItemRemoveEvent;
 
 type ServerEvent =
   | { type: "ready"; snapshot: SessionSnapshot }
@@ -56,6 +63,7 @@ type ServerEvent =
   | { type: "activity"; chatId: string; item: ActivityItem }
   | { type: "canvas_item"; chatId: string; item: CanvasItem }
   | { type: "canvas_clear"; chatId: string }
+  | { type: "canvas_map_update"; chatId: string; mapId: string; map: CanvasMapItem }
   | { type: "assistant_start"; chatId: string; messageId: string }
   | { type: "assistant_delta"; chatId: string; messageId: string; delta: string }
   | { type: "assistant_done"; chatId: string; messageId: string; content: string }
@@ -66,6 +74,7 @@ interface ToolExecutionResult {
   item?: CanvasItem;
   cleared?: boolean;
   action?: TurnActionItem;
+  mapContext?: { mapId: string; center: { lat: number; lng: number }; title: string };
 }
 
 const sessions = new Map<string, SessionState>();
@@ -148,8 +157,8 @@ function clearCanvas(chat: SessionState["chats"][number]) {
   chat.canvasItems = [
     createCanvasNote(
       "Canvas bereit",
-      "Noch keine Lagekarten vorhanden",
-      "Hier legt der Agent später Diagramme, Karten und Bilder ab.",
+      "Noch keine Visualisierung vorhanden",
+      "Hier legt der Agent später Diagramme, Charts, Karten und Bilder ab.",
     ),
   ];
 }
@@ -159,6 +168,13 @@ function addCanvasItem(chat: SessionState["chats"][number], item: CanvasItem) {
   clampCanvasItems(chat);
   touchChat(chat);
   return item;
+}
+
+function findActiveMap(chat: SessionState["chats"][number], mapId?: string): CanvasMapItem | null {
+  const target = mapId
+    ? chat.canvasItems.find((item) => item.kind === "map" && item.id === mapId)
+    : chat.canvasItems.find((item) => item.kind === "map"); // unshift = newest first
+  return (target as CanvasMapItem) ?? null;
 }
 
 async function executeToolCall(
@@ -180,6 +196,20 @@ async function executeToolCall(
       });
       return {
         summary: `Diagramm "${item.title}" angelegt.`,
+        item,
+        action,
+      };
+    }
+    case "canvas_create_chart": {
+      const item = addCanvasItem(chat, createChartItem(args));
+      const action = createTurnAction("Canvas", `Chart ${item.title} angelegt`, "live");
+      send(ws, {
+        type: "canvas_item",
+        chatId: chat.id,
+        item,
+      });
+      return {
+        summary: `Chart "${item.title}" angelegt.`,
         item,
         action,
       };
@@ -239,6 +269,151 @@ async function executeToolCall(
         action,
       };
     }
+    case "canvas_map_add_marker": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) {
+        const action = createTurnAction("Karte", "Keine Karte gefunden", "warn");
+        return { summary: "Keine Karte vorhanden. Bitte erst canvas_create_map aufrufen.", action };
+      }
+      const markerKinds = ["fire", "hydrant", "water", "vehicle", "point"] as const;
+      const kind = markerKinds.includes(String(args.kind) as (typeof markerKinds)[number])
+        ? (args.kind as (typeof markerKinds)[number])
+        : "point";
+      const marker = {
+        id: crypto.randomUUID(),
+        label: String(args.label ?? "Marker"),
+        kind,
+        point: { lat: Number(args.lat ?? map.center.lat), lng: Number(args.lng ?? map.center.lng) },
+        flowRateLpm: typeof args.flowRateLpm === "number" && Number.isFinite(args.flowRateLpm)
+          ? args.flowRateLpm
+          : typeof args.flowRateLpm === "string" && Number.isFinite(Number(args.flowRateLpm))
+            ? Number(args.flowRateLpm)
+            : undefined,
+        flowRateEstimated: typeof args.flowRateEstimated === "boolean" ? args.flowRateEstimated : undefined,
+        note: args.note ? String(args.note) : undefined,
+      };
+      map.markers.push(marker);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const action = createTurnAction("Karte", `Marker „${marker.label}" (${kind}) gesetzt`, "live");
+      return {
+        summary: `Marker „${marker.label}" (${kind}) bei ${marker.point.lat.toFixed(5)}, ${marker.point.lng.toFixed(5)} eingetragen.`,
+        action,
+        mapContext: { mapId: map.id, center: map.center, title: map.title },
+      };
+    }
+
+    case "canvas_map_add_area": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) {
+        const action = createTurnAction("Karte", "Keine Karte gefunden", "warn");
+        return { summary: "Keine Karte vorhanden.", action };
+      }
+      const area = {
+        id: crypto.randomUUID(),
+        label: String(args.label ?? "Bereich"),
+        center: { lat: Number(args.lat ?? 0), lng: Number(args.lng ?? 0) },
+        radiusMeters: Number(args.radiusMeters ?? 100),
+        color: args.color ? String(args.color) : undefined,
+      };
+      map.areas.push(area);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const action = createTurnAction("Karte", `Bereich „${area.label}" (${area.radiusMeters}m) eingezeichnet`, "live");
+      return {
+        summary: `Bereich „${area.label}" mit Radius ${area.radiusMeters}m eingezeichnet.`,
+        action,
+        mapContext: { mapId: map.id, center: map.center, title: map.title },
+      };
+    }
+
+    case "canvas_map_add_route": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) {
+        const action = createTurnAction("Karte", "Keine Karte gefunden", "warn");
+        return { summary: "Keine Karte vorhanden.", action };
+      }
+      const points = Array.isArray(args.points)
+        ? (args.points as Array<Record<string, unknown>>).map((p) => ({ lat: Number(p.lat ?? 0), lng: Number(p.lng ?? 0) }))
+        : [];
+      const route = {
+        id: crypto.randomUUID(),
+        name: String(args.name ?? "Route"),
+        description: String(args.description ?? ""),
+        points,
+        color: args.color ? String(args.color) : undefined,
+      };
+      map.routes.push(route);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const action = createTurnAction("Karte", `Route „${route.name}" (${points.length} Punkte) eingezeichnet`, "live");
+      return {
+        summary: `Route „${route.name}" mit ${points.length} Punkten eingezeichnet.`,
+        action,
+        mapContext: { mapId: map.id, center: map.center, title: map.title },
+      };
+    }
+
+    case "canvas_map_add_polygon": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) return { summary: "Keine Karte gefunden.", action: createTurnAction("Karte", "Keine Karte vorhanden", "warn") };
+      if (!map.polygons) map.polygons = [];
+      const points = Array.isArray(args.points)
+        ? (args.points as Array<Record<string, unknown>>).map((p) => ({ lat: Number(p.lat ?? 0), lng: Number(p.lng ?? 0) }))
+        : [];
+      const polygon: CanvasMapPolygon = {
+        id: crypto.randomUUID(),
+        label: String(args.label ?? "Bereich"),
+        points,
+        color: args.color ? String(args.color) : undefined,
+        fillOpacity: args.fillOpacity ? Number(args.fillOpacity) : undefined,
+      };
+      map.polygons.push(polygon);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const action = createTurnAction("Karte", `Polygon „${polygon.label}" (${points.length} Punkte) eingezeichnet`, "live");
+      return { summary: `Polygon „${polygon.label}" mit ${points.length} Punkten eingezeichnet.`, action };
+    }
+
+    case "canvas_map_add_label": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) return { summary: "Keine Karte gefunden.", action: createTurnAction("Karte", "Keine Karte vorhanden", "warn") };
+      if (!map.labels) map.labels = [];
+      const label: CanvasMapLabel = {
+        id: crypto.randomUUID(),
+        text: String(args.text ?? "Label"),
+        lat: Number(args.lat ?? 0),
+        lng: Number(args.lng ?? 0),
+        size: (["sm", "md", "lg"].includes(String(args.size)) ? args.size : "md") as CanvasMapLabel["size"],
+      };
+      map.labels.push(label);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const action = createTurnAction("Karte", `Beschriftung „${label.text}" gesetzt`, "live");
+      return { summary: `Beschriftung „${label.text}" auf Karte gesetzt.`, action };
+    }
+
+    case "canvas_map_add_wind": {
+      const map = findActiveMap(chat, typeof args.mapId === "string" ? args.mapId : undefined);
+      if (!map) return { summary: "Keine Karte gefunden.", action: createTurnAction("Karte", "Keine Karte vorhanden", "warn") };
+      if (!map.winds) map.winds = [];
+      const wind: CanvasMapWind = {
+        id: crypto.randomUUID(),
+        lat: Number(args.lat ?? 0),
+        lng: Number(args.lng ?? 0),
+        directionDeg: Number(args.directionDeg ?? 0),
+        speedKmh: args.speedKmh ? Number(args.speedKmh) : undefined,
+        label: args.label ? String(args.label) : undefined,
+      };
+      map.winds.push(wind);
+      touchChat(chat);
+      send(ws, { type: "canvas_map_update", chatId: chat.id, mapId: map.id, map });
+      const dir = wind.directionDeg;
+      const compass = ["N","NO","O","SO","S","SW","W","NW"][Math.round(dir / 45) % 8];
+      const action = createTurnAction("Karte", `Windpfeil ${compass} (${dir}°)${wind.speedKmh ? ` · ${wind.speedKmh} km/h` : ""} gesetzt`, "live");
+      return { summary: `Windpfeil: ${dir}° (${compass})${wind.speedKmh ? `, ${wind.speedKmh} km/h` : ""}.`, action };
+    }
+
     default: {
       // Try to call external MCP tools
       try {
@@ -367,6 +542,53 @@ function canvasTools(): OpenAIToolDefinition[] {
     {
       type: "function",
       function: {
+        name: "canvas_create_chart",
+        description: "Erstellt ein Zahlen-Chart auf dem Canvas, z.B. Balken-, Linien-, Flächen- oder XY-Darstellungen.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", description: "Kurzer Titel des Charts" },
+            summary: { type: "string", description: "Einzeilige Zusammenfassung" },
+            chartType: {
+              type: "string",
+              enum: ["bar", "line", "area", "scatter"],
+              description: "Darstellungsart des Charts",
+            },
+            xLabels: {
+              type: "array",
+              description: "X-Achsenwerte oder Labels in Reihenfolge, z.B. Zeiten, Distanzen oder Kategorien.",
+              minItems: 1,
+              items: { type: "string" },
+            },
+            xUnit: { type: "string", description: "Optionale Einheit der X-Achse, z.B. min, m, km, Uhrzeit" },
+            yUnit: { type: "string", description: "Optionale Einheit der Y-Achse, z.B. l/min, °C, Personen" },
+            series: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", description: "Name der Serie" },
+                  color: { type: "string", description: "Optionale Hex-Farbe, z.B. #2563eb" },
+                  values: {
+                    type: "array",
+                    minItems: 1,
+                    items: { type: "number" },
+                  },
+                },
+                required: ["label", "values"],
+              },
+            },
+          },
+          required: ["title", "summary", "chartType", "xLabels", "series"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "canvas_create_map",
         description: "Erstellt einen OSM-basierten Lageplan mit Zentrum, Layern, Legende, Markern, Bereichen und optionalen Routen.",
         parameters: {
@@ -401,7 +623,9 @@ function canvasTools(): OpenAIToolDefinition[] {
                   },
                   lat: { type: "number" },
                   lng: { type: "number" },
-                  note: { type: "string" },
+                  flowRateLpm: { type: "number", description: "Nur für Hydranten: Durchfluss in Litern pro Minute" },
+                  flowRateEstimated: { type: "boolean", description: "Nur für Hydranten: true, wenn der Wert geschätzt ist" },
+                  note: { type: "string", description: "Zusatzinfo für Hover, z.B. DN, Zustand oder kurze Taktiknotiz" },
                 },
                 required: ["label", "kind", "lat", "lng"],
               },
@@ -484,6 +708,149 @@ function canvasTools(): OpenAIToolDefinition[] {
         },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_marker",
+        description: "Fügt einen Marker zu einer bestehenden Karte hinzu. Nutze stets präzise WGS84-Koordinaten (z.B. vom Geocoding-Tool). Beim ersten Aufruf ohne mapId wird die neueste Karte verwendet.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte im Chat" },
+            label: { type: "string", description: "Kurzbezeichnung des Markers, z.B. 'Hydrant 3' oder 'Brandstelle'" },
+            kind: { type: "string", enum: ["fire", "hydrant", "water", "vehicle", "point"], description: "fire=Brandstelle, hydrant=Hydrant, water=Wasserentnahme, vehicle=Fahrzeug, point=sonstiger Punkt" },
+            lat: { type: "number", description: "Breitengrad WGS84, z.B. 48.13743" },
+            lng: { type: "number", description: "Längengrad WGS84, z.B. 11.57549" },
+            flowRateLpm: { type: "number", description: "Nur für Hydranten: Durchfluss in Litern pro Minute, idealerweise aus analyze_hydrants()" },
+            flowRateEstimated: { type: "boolean", description: "Nur für Hydranten: true setzen, wenn der Durchfluss laut OSM/MCP nur geschätzt ist" },
+            note: { type: "string", description: "Typ-spezifische Kurzinfo die beim Hovern erscheint. Hydrant→'DN100, Unterflur', Fahrzeug→'HLF20, Bereit', Brandstelle→'EG Westflügel, Vollbrand', Wasser→'Zisterne 20m³'" },
+          },
+          required: ["label", "kind", "lat", "lng"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_area",
+        description: "Zeichnet einen Kreisbereich auf die Karte (Sperrzone, Einsatzbereich, Wasserentnahmezone, Gefahrenbereich).",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte" },
+            label: { type: "string", description: "Bezeichnung des Bereichs" },
+            lat: { type: "number", description: "Mittelpunkt Breitengrad WGS84" },
+            lng: { type: "number", description: "Mittelpunkt Längengrad WGS84" },
+            radiusMeters: { type: "number", description: "Radius in Metern" },
+            color: { type: "string", description: "Hex-Farbe, z.B. #ff0000 für Sperrzone" },
+          },
+          required: ["label", "lat", "lng", "radiusMeters"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_route",
+        description: "Zeichnet eine Pendelroute, Zufahrt oder Rückzugsweg auf die Karte. Mindestens 2 Punkte mit präzisen Koordinaten.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte" },
+            name: { type: "string", description: "Name der Route, z.B. 'Pendelroute A'" },
+            description: { type: "string", description: "Kurzbeschreibung: von wo nach wo, Zweck" },
+            points: {
+              type: "array",
+              minItems: 2,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  lat: { type: "number" },
+                  lng: { type: "number" },
+                },
+                required: ["lat", "lng"],
+              },
+            },
+            color: { type: "string", description: "Hex-Farbe, z.B. #3b82f6 für blau" },
+          },
+          required: ["name", "description", "points"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_polygon",
+        description: "Zeichnet eine unregelmäßige Fläche auf die Karte (Gebäudegrundriss, Waldbrand-Perimeter, Evakuierungszone, Einsatzabschnitt). Mindestens 3 Punkte.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte" },
+            label: { type: "string", description: "Bezeichnung der Fläche, z.B. 'Evakuierungszone A'" },
+            points: {
+              type: "array",
+              minItems: 3,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  lat: { type: "number" },
+                  lng: { type: "number" },
+                },
+                required: ["lat", "lng"],
+              },
+            },
+            color: { type: "string", description: "Hex-Farbe, z.B. #ef4444 (rot) für Sperrzone, #f59e0b (orange) für Gefahrenbereich" },
+            fillOpacity: { type: "number", description: "Füll-Transparenz 0–1, Standard 0.15" },
+          },
+          required: ["label", "points"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_label",
+        description: "Setzt eine freie Textbeschriftung an einem Kartenpunkt (Sammelpunkt, Triage-Bereich, Bereitstellungsraum, Abschnittsname). Kein Symbol, nur Text.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte" },
+            text: { type: "string", description: "Beschriftungstext, kurz halten (max ~20 Zeichen)" },
+            lat: { type: "number", description: "Breitengrad WGS84" },
+            lng: { type: "number", description: "Längengrad WGS84" },
+            size: { type: "string", enum: ["sm", "md", "lg"], description: "Schriftgröße: sm=klein, md=mittel (Standard), lg=groß" },
+          },
+          required: ["text", "lat", "lng"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "canvas_map_add_wind",
+        description: "Setzt einen Windpfeil auf die Karte. Zeigt Windrichtung und Stärke an – wichtig für Rauchausbreitung, Gefahrstoffe, Löschmitteleinsatz.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mapId: { type: "string", description: "ID der Zielkarte – weglassen für neueste Karte" },
+            lat: { type: "number", description: "Position Breitengrad WGS84" },
+            lng: { type: "number", description: "Position Längengrad WGS84" },
+            directionDeg: { type: "number", description: "Richtung wohin der Wind WEHT in Grad (0=N, 90=O, 180=S, 270=W). Beispiel: Wind aus SW der Richtung NO weht → 45°" },
+            speedKmh: { type: "number", description: "Windgeschwindigkeit in km/h" },
+            label: { type: "string", description: "Optionales Kürzel, z.B. 'SW 15km/h'" },
+          },
+          required: ["lat", "lng", "directionDeg"],
+        },
+      },
+    },
   ];
 }
 
@@ -539,10 +906,16 @@ async function handleChat(ws: Bun.ServerWebSocket<ConnectionState>, event: Clien
     messageId: assistantMessageId,
   });
 
+  const mcpToolList = getToolRegistry();
+  const mcpSection =
+    mcpToolList.length > 0
+      ? `\n\nExterne Tools (${mcpToolList.length} verfügbar — rufe diese aktiv auf wenn passend):\n${mcpToolList.map((t) => `- ${t.function.name}: ${t.function.description}`).join("\n")}`
+      : "";
+
   const conversation: OpenAIConversationMessage[] = [
     {
       role: "system",
-      content: `${SYSTEM_PROMPT}\n\nCanvas-Tools:\n- canvas_create_diagram: Diagramme mit Knoten/Verbindungen, Layouts: flow, radial, timeline, matrix\n- canvas_add_image: vorhandene Bilder oder Bildplatzhalter ablegen\n- canvas_create_map: Lageplan mit Zentrum, Layern, Legende und Routen\n- canvas_add_note: kurze Canvas-Notiz\n- canvas_clear: Canvas leeren\n\nNutze die Tools aktiv, wenn du Diagramme, Karten, Bilder oder Planungsartefakte ablegen willst.`,
+      content: `${SYSTEM_PROMPT}\n\nCanvas-Tools:\n- canvas_create_map: Karte anlegen mit Zentrum, Zoom, initialen Markern/Bereichen/Routen\n- canvas_map_add_marker: Einzelnen Marker zur bestehenden Karte hinzufügen (label, kind, lat, lng) – bevorzuge dieses Tool für schrittweisen Aufbau\n- canvas_map_add_area: Kreisbereich einzeichnen (Sperrzone, Gefahrenbereich, Wasserentnahme)\n- canvas_map_add_route: Pendelroute oder Zufahrt einzeichnen (mind. 2 Punkte)\n- canvas_map_add_polygon: Unregelmäßige Fläche (Evakuierungszone, Gebäude, Abschnitt, Perimeter)\n- canvas_map_add_label: Freier Textpunkt (Sammelpunkt, Triage, Bereitstellungsraum)\n- canvas_map_add_wind: Windpfeil mit Richtung und Geschwindigkeit\n- canvas_create_diagram: Strukturdiagramme (flow, radial, timeline, matrix)\n- canvas_create_chart: Zahlenreihen als Balken-, Linien-, Flächen- oder XY-Chart\n- canvas_add_image: Bildplatzhalter\n- canvas_add_note: Textnotiz\n- canvas_clear: Canvas leeren\n\nKarten-Workflow für Lagebilder:\n1. canvas_create_map mit Einsatzort als Zentrum (centerLat/centerLng)\n2. Dann canvas_map_add_marker für jeden Punkt (Brandstelle, Hydranten, Fahrzeuge) – jeder Marker MUSS andere lat/lng haben\n3. Für Hydranten möglichst zuerst analyze_hydrants nutzen und den ermittelten Durchfluss in flowRateLpm übernehmen\n4. canvas_map_add_area für Sperrzonen\n5. canvas_map_add_route für Pendelrouten\n\nKOORDINATEN-REGELN:\n- Jeder Marker braucht eindeutige lat/lng – niemals zwei Marker mit identischen Koordinaten\n- Das Tool gibt nach jedem Aufruf mapContext.center zurück – nutze diese Kartenmitte als Basis\n- Wenn keine exakte Adresse bekannt: Offset vom Zentrum schätzen (±0.0001–0.002 Grad ≈ 10–200m)\n- Beispiel: Zentrum 48.1374, 11.5755 → Hydrant Nord: 48.1384, 11.5755 | Hydrant Ost: 48.1374, 11.5775\n- Nutze Geocoding-Tools für echte Adressen wenn vorhanden\n- Wenn analyze_hydrants einen Hydranten liefert, übernimm Flow rate in flowRateLpm und setze flowRateEstimated=true, falls der MCP-Output den Wert als geschätzt markiert${mcpSection}`,
     },
     ...chat.messages.map((message) => ({
       role: message.role,
@@ -775,6 +1148,15 @@ export function createWebSocketHandlers(runtimeConfig: RuntimeConfig) {
         const chat = getChat(ws.data.session, event.chatId);
         ws.data.session.activeChatId = chat.id;
         ws.data.session.updatedAt = new Date().toISOString();
+        emitSnapshot(ws);
+        return;
+      }
+
+      if (event.type === "canvas_item_remove") {
+        const chat = getChat(ws.data.session, event.chatId);
+        chat.canvasItems = chat.canvasItems.filter((item) => item.id !== event.itemId);
+        touchChat(chat);
+        ws.data.session.updatedAt = chat.updatedAt;
         emitSnapshot(ws);
         return;
       }

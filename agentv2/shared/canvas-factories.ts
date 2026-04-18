@@ -1,4 +1,26 @@
-import { createCanvasNote, type CanvasDiagramItem, type CanvasImageItem, type CanvasMapItem, type CanvasItem } from "./canvas";
+import {
+  createCanvasChart,
+  createCanvasNote,
+  isCanvasChartType,
+  type CanvasChartItem,
+  type CanvasChartType,
+  type CanvasDiagramItem,
+  type CanvasImageItem,
+  type CanvasMapItem,
+} from "./canvas";
+
+const FALLBACK_CHART_COLORS = ["#c2410c", "#2563eb", "#059669", "#7c3aed", "#dc2626", "#0f766e"];
+
+function toOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function toChartType(value: unknown): CanvasChartType {
+  const chartType = String(value || "line");
+  return isCanvasChartType(chartType) ? chartType : "line";
+}
 
 export function createDiagramFactory() {
   return {
@@ -54,6 +76,8 @@ export function createMapFactory() {
               lng: Number(m.point?.lng) || 0,
             },
             kind: (m.kind || "point") as "fire" | "hydrant" | "water" | "vehicle" | "point",
+            flowRateLpm: toOptionalNumber(m.flowRateLpm),
+            flowRateEstimated: typeof m.flowRateEstimated === "boolean" ? m.flowRateEstimated : undefined,
             note: m.note ? String(m.note) : undefined,
           }))
         : [];
@@ -103,8 +127,36 @@ export function createMapFactory() {
         markers,
         areas,
         routes,
+        polygons: [],
+        labels: [],
+        winds: [],
         ...meta,
       };
+    },
+  };
+}
+
+export function createChartFactory() {
+  return {
+    createChart: (args: Record<string, any>): CanvasChartItem => {
+      const xLabels = Array.isArray(args.xLabels) ? args.xLabels.map(String) : [];
+      const series = Array.isArray(args.series)
+        ? args.series.map((entry: any, index: number) => ({
+            label: String(entry.label || `Serie ${index + 1}`),
+            color: entry.color ? String(entry.color) : FALLBACK_CHART_COLORS[index % FALLBACK_CHART_COLORS.length],
+            values: Array.isArray(entry.values) ? entry.values.map((value: unknown) => Number(value) || 0) : [],
+          }))
+        : [];
+
+      return createCanvasChart(
+        String(args.title || "Chart"),
+        String(args.summary || ""),
+        toChartType(args.chartType),
+        xLabels,
+        series,
+        args.yUnit ? String(args.yUnit) : undefined,
+        args.xUnit ? String(args.xUnit) : undefined,
+      );
     },
   };
 }

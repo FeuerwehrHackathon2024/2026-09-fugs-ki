@@ -4,12 +4,22 @@ services:
     ports:
       - "3002:8000"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/tools/list"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
 
   commandx:
     image: ghcr.io/feuerwehrhackathon2024/mcp-commandx:0.0.3-beta
     ports:
       - "3003:8000"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/tools/list"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
 
   agent:
     build: ./agent
@@ -18,3 +28,32 @@ services:
     volumes:
       - ./agent/config.json:/app/config.json:ro
     restart: unless-stopped
+
+  # agentv2 - New version with MCP support
+  agentv2:
+    build: ./agentv2
+    ports:
+      - "3000:3001"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      MCP_TOOLS_URL: http://tools:8000
+      MCP_COMMANDX_URL: http://commandx:8000
+    volumes:
+      - agentv2-data:/app/data
+    depends_on:
+      tools:
+        condition: service_healthy
+      commandx:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  agentv2-data:
+    driver: local
+

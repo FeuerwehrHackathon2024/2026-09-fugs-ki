@@ -1,4 +1,4 @@
-import { crypto } from "node:crypto";
+import crypto from "node:crypto";
 
 // Session cookie configuration
 const COOKIE_NAME = "agentv2_session";

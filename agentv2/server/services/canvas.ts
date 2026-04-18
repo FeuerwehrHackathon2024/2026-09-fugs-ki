@@ -1,5 +1,14 @@
 // Canvas item factory and utilities
-import { type CanvasDiagramItem, type CanvasImageItem, type CanvasMapItem, type CanvasNoteItem, createCanvasNote } from "../../shared/canvas";
+import {
+  createCanvasChart,
+  isCanvasChartType,
+  type CanvasChartItem,
+  type CanvasChartType,
+  type CanvasDiagramItem,
+  type CanvasImageItem,
+  type CanvasMapItem,
+  type CanvasNoteItem,
+} from "../../shared/canvas";
 import type { TurnActionItem } from "../../shared/turn";
 
 export type CanvasDiagramLayout = "flow" | "radial" | "timeline" | "matrix";
@@ -42,9 +51,31 @@ export function toNumber(value: unknown, fallback: number): number {
   return fallback;
 }
 
+export function toOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = toNumber(value, Number.NaN);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+export function toNumberArray(value: unknown, label = "Werte"): number[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry, index) => {
+    const parsed = toNumber(entry, Number.NaN);
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`${label}: Ungültiger Zahlenwert an Position ${index + 1}.`);
+    }
+    return parsed;
+  });
+}
+
 export function toDiagramLayout(value: unknown): CanvasDiagramLayout {
   const layout = toString(value, "flow");
   return layout === "radial" || layout === "timeline" || layout === "matrix" ? layout : "flow";
+}
+
+export function toChartType(value: unknown): CanvasChartType {
+  const chartType = toString(value, "line");
+  return isCanvasChartType(chartType) ? chartType : "line";
 }
 
 export function createDiagramItem(args: Record<string, unknown>): CanvasDiagramItem {
@@ -87,6 +118,31 @@ export function createImageItem(args: Record<string, unknown>): CanvasImageItem 
   };
 }
 
+export function createChartItem(args: Record<string, unknown>): CanvasChartItem {
+  const xLabels = toStringArray(args.xLabels);
+  const series = toObjectArray(args.series).map((entry, index) => ({
+    label: toString(entry.label, `Serie ${index + 1}`),
+    color: toString(entry.color, undefined),
+    values: toNumberArray(entry.values, `Serie ${index + 1}`),
+  }));
+
+  if (xLabels.length === 0) throw new Error("Chart benötigt xLabels.");
+  if (series.length === 0) throw new Error("Chart benötigt mindestens eine Serie.");
+  if (series.some((entry) => entry.values.length !== xLabels.length)) {
+    throw new Error("Jede Serie muss genau so viele Werte wie xLabels enthalten.");
+  }
+
+  return createCanvasChart(
+    toString(args.title, "Chart"),
+    toString(args.summary, "Zahlenreihe auf dem Canvas"),
+    toChartType(args.chartType),
+    xLabels,
+    series,
+    toString(args.yUnit, undefined),
+    toString(args.xUnit, undefined),
+  );
+}
+
 export function createMapItem(args: Record<string, unknown>): CanvasMapItem {
   const meta = createCanvasMeta();
   const center = args.center && typeof args.center === "object" ? (args.center as Record<string, unknown>) : {};
@@ -114,6 +170,8 @@ export function createMapItem(args: Record<string, unknown>): CanvasMapItem {
           lng: toNumber(marker.lng ?? markerPoint.lng, 11.575),
         },
         kind: (toString(marker.kind, "point") as CanvasMapItem["markers"][number]["kind"]) ?? "point",
+        flowRateLpm: toOptionalNumber(marker.flowRateLpm),
+        flowRateEstimated: typeof marker.flowRateEstimated === "boolean" ? marker.flowRateEstimated : undefined,
         note: toString(marker.note, undefined),
       };
     }),
@@ -141,13 +199,15 @@ export function createMapItem(args: Record<string, unknown>): CanvasMapItem {
       })),
       color: toString(route.color, undefined),
     })),
+    polygons: [],
+    labels: [],
+    winds: [],
   };
 }
 
 export function createNoteItem(args: Record<string, unknown>): CanvasNoteItem {
-  const meta = createCanvasMeta();
   return {
-    ...meta,
+    ...createCanvasMeta(),
     kind: "note",
     title: toString(args.title, "Notiz"),
     summary: toString(args.summary, "Canvas-Notiz"),

@@ -3,3 +3,6 @@ dist/
 .env
 .env.*
 bun.lockb
+
+data/
+logs/

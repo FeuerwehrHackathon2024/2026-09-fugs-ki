@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import CanvasArtifact from "@/components/CanvasArtifact.vue";
 import ChatTurnGroup from "@/components/ChatTurnGroup.vue";
-import type { CanvasItem } from "../shared/canvas";
+import type { CanvasItem, CanvasMapItem } from "../shared/canvas";
 import { summarizeTurn, type ChatTurn, type TurnActionItem } from "../shared/turn";
 import { useTurnExpansion } from "./composables/useTurnExpansion";
 
@@ -72,28 +72,34 @@ type ServerEvent =
   | { type: "activity"; chatId: string; item: ActivityItem }
   | { type: "canvas_item"; chatId: string; item: CanvasItem }
   | { type: "canvas_clear"; chatId: string }
+  | { type: "canvas_map_update"; chatId: string; mapId: string; map: CanvasMapItem }
   | { type: "assistant_start"; chatId: string; messageId: string }
   | { type: "assistant_delta"; chatId: string; messageId: string; delta: string }
   | { type: "assistant_done"; chatId: string; messageId: string; content: string }
   | { type: "error"; message: string; detail?: string };
 
 type ClientEvent =
-  | {
-      type: "init";
-      model: string;
-      sessionId?: string;
-    }
+  | { type: "init"; model: string; sessionId?: string }
   | { type: "new_chat" }
   | { type: "switch_chat"; chatId: string }
-  | { type: "chat"; chatId: string; messageId: string; text: string };
+  | { type: "chat"; chatId: string; messageId: string; text: string }
+  | { type: "canvas_item_remove"; chatId: string; itemId: string };
 
 const storageKeys = {
   sessionId: "agentv2.sessionId",
   theme: "agentv2.themePreference",
 };
 
+interface MCPServerStatus {
+  label: string;
+  url: string;
+  connected: boolean;
+  toolCount: number;
+}
+
 const runtimeConfig = ref<RuntimeConfig | null>(null);
 const model = ref("");
+const mcpServers = ref<MCPServerStatus[]>([]);
 const themePreference = ref<ThemePreference>((localStorage.getItem(storageKeys.theme) as ThemePreference) ?? "system");
 const systemDark = ref(window.matchMedia("(prefers-color-scheme: dark)").matches);
 const resolvedTheme = computed(() =>
@@ -116,6 +122,7 @@ const scrollTarget = ref<HTMLDivElement | null>(null);
 const canvasRailRef = ref<HTMLDivElement | null>(null);
 const selectedCanvasByChat = ref<Record<string, string>>({});
 const autoConnectAttempted = ref(false);
+const canvasFullscreen = ref(false);
 const { isExpanded: isTurnExpanded, expandTurn, collapseTurn, collapseChatTurns } = useTurnExpansion();
 const availableModels = computed(() => runtimeConfig.value?.models ?? []);
 const selectedModel = computed(() => availableModels.value.find((entry) => entry.id === model.value) ?? null);
@@ -385,6 +392,17 @@ async function loadRuntimeConfig() {
   model.value = config.autoConnectModelId || config.defaultModelId;
 }
 
+async function loadMCPStatus() {
+  try {
+    const response = await fetch("/api/mcp/status");
+    if (response.ok) {
+      mcpServers.value = (await response.json()) as MCPServerStatus[];
+    }
+  } catch {
+    // MCP status is optional, ignore errors
+  }
+}
+
 function connect() {
   const runtimeModel = runtimeConfig.value;
   const selectedModelId =
@@ -489,6 +507,17 @@ function connect() {
         selectedCanvasByChat.value = rest;
       }
       scrollToBottom();
+      return;
+    }
+
+    if (event.type === "canvas_map_update") {
+      const chat = session.value?.chats.find((entry) => entry.id === event.chatId);
+      if (chat) {
+        const idx = chat.canvasItems.findIndex((item) => item.id === event.mapId);
+        if (idx !== -1) {
+          chat.canvasItems[idx] = event.map;
+        }
+      }
       return;
     }
 
@@ -662,6 +691,26 @@ function activateCanvasItem(item: CanvasItem) {
   focusCanvasItem(item.id);
 }
 
+function removeCanvasItem(item: CanvasItem) {
+  if (!currentChat.value) return;
+  const chatId = currentChatId.value;
+  const idx = currentChat.value.canvasItems.findIndex((c) => c.id === item.id);
+  if (idx !== -1) currentChat.value.canvasItems.splice(idx, 1);
+  if (selectedCanvasId.value === item.id) {
+    const next = currentChat.value.canvasItems[0];
+    selectedCanvasByChat.value = { ...selectedCanvasByChat.value, [chatId]: next?.id ?? "" };
+  }
+  if (socket.value?.readyState === WebSocket.OPEN) {
+    emit({ type: "canvas_item_remove", chatId, itemId: item.id });
+  }
+}
+
+async function toggleFullscreen() {
+  canvasFullscreen.value = !canvasFullscreen.value;
+  await nextTick();
+  window.dispatchEvent(new Event("resize"));
+}
+
   onMounted(async () => {
     const savedSessionId = localStorage.getItem(storageKeys.sessionId);
     await seedSession(savedSessionId ?? undefined);
@@ -670,6 +719,8 @@ function activateCanvasItem(item: CanvasItem) {
     const onMqChange = (e: MediaQueryListEvent) => { systemDark.value = e.matches; };
     mq.addEventListener("change", onMqChange);
     onBeforeUnmount(() => mq.removeEventListener("change", onMqChange));
+
+    loadMCPStatus();
 
     loadRuntimeConfig()
       .then(() => {
@@ -721,6 +772,20 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="controls">
+        <div v-if="mcpServers.length > 0" class="mcp-status-group" title="MCP Server">
+          <span class="mcp-status-label">MCP</span>
+          <span
+            v-for="srv in mcpServers"
+            :key="srv.label"
+            class="mcp-chip"
+            :class="{ 'mcp-chip--ok': srv.connected, 'mcp-chip--err': !srv.connected }"
+            :title="`${srv.label} · ${srv.url} · ${srv.connected ? srv.toolCount + ' Tools' : 'nicht erreichbar'}`"
+          >
+            <span class="mcp-dot"></span>
+            {{ srv.label }}
+          </span>
+        </div>
+
         <div class="theme-toggle" role="group" aria-label="Farbschema">
           <button class="theme-btn" :class="{ active: themePreference === 'light' }" title="Hell" type="button" @click="setTheme('light')">☀</button>
           <button class="theme-btn" :class="{ active: themePreference === 'system' }" title="Auto" type="button" @click="setTheme('system')">◑</button>
@@ -741,7 +806,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <main class="workspace">
+    <main class="workspace" :class="{ 'canvas-fullscreen': canvasFullscreen }">
       <section class="panel chat-panel">
         <div class="panel-header">
           <div>
@@ -810,6 +875,9 @@ onBeforeUnmount(() => {
           <div class="canvas-header-actions">
             <span class="canvas-header-count">{{ currentChat?.canvasItems.length ?? 0 }}</span>
             <button v-if="selectedCanvasItem" class="button canvas-focus-button" type="button" @click="scrollCanvasToEnd">Neueste</button>
+            <button class="button canvas-fullscreen-btn" type="button" :title="canvasFullscreen ? 'Vollbild beenden' : 'Vollbild'" @click="toggleFullscreen">
+              {{ canvasFullscreen ? '✕' : '⛶' }}
+            </button>
           </div>
         </div>
 
@@ -832,17 +900,18 @@ onBeforeUnmount(() => {
             </div>
 
             <div v-if="timelineCanvasItems.length > 0" ref="canvasRailRef" class="canvas-strip">
-              <button
+              <div
                 v-for="item in timelineCanvasItems"
                 :id="`canvas-item-${item.id}`"
                 :key="item.id"
-                type="button"
                 class="canvas-tile"
                 :class="{ active: item.id === selectedCanvasId }"
-                @click="activateCanvasItem(item)"
               >
-                <CanvasArtifact :item="item" compact />
-              </button>
+                <button type="button" class="canvas-tile-select" @click="activateCanvasItem(item)">
+                  <CanvasArtifact :item="item" compact />
+                </button>
+                <button type="button" class="canvas-tile-delete" title="Slide löschen" @click.stop="removeCanvasItem(item)">×</button>
+              </div>
             </div>
             <div v-else class="canvas-strip-empty">
               <span>Noch keine Canvas-Objekte</span>

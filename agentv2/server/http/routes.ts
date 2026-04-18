@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { toPublicRuntimeConfig, type RuntimeConfig } from "../config/models";
 import { parseSessionCookie, createSessionCookieHeader } from "./cookies";
 import { loadSession, saveSession } from "../db/persistence";
+import { getMCPServerStatus } from "../services/mcp";
 
 interface HttpHandlerOptions {
   runtimeConfig: RuntimeConfig;
@@ -16,6 +17,10 @@ export function createHttpHandler({ runtimeConfig, distDir }: HttpHandlerOptions
       return Response.json({ ok: true });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/mcp/status") {
+      return Response.json(getMCPServerStatus());
+    }
+
     if (req.method === "GET" && url.pathname === "/api/models") {
       return Response.json(toPublicRuntimeConfig(runtimeConfig).models);
     }
@@ -27,7 +32,7 @@ export function createHttpHandler({ runtimeConfig, distDir }: HttpHandlerOptions
     // Session recovery endpoint
     if (req.method === "GET" && url.pathname === "/api/session") {
       const cookieHeader = req.headers.get("cookie");
-      const sessionId = parseSessionCookie(cookieHeader);
+      const sessionId = parseSessionCookie(cookieHeader ?? undefined);
       
       if (sessionId) {
         const session = loadSession(sessionId);
@@ -42,7 +47,7 @@ export function createHttpHandler({ runtimeConfig, distDir }: HttpHandlerOptions
     // Chat history endpoint
     if (req.method === "GET" && url.pathname === "/api/session/chats") {
       const cookieHeader = req.headers.get("cookie");
-      const sessionId = parseSessionCookie(cookieHeader);
+      const sessionId = parseSessionCookie(cookieHeader ?? undefined);
       
       if (!sessionId) {
         return Response.json({ error: "No session" }, { status: 401 });
