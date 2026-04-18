@@ -864,7 +864,6 @@ async function handleChat(ws: Bun.ServerWebSocket<ConnectionState>, event: Clien
   const controller = new AbortController();
   ws.data.controller = controller;
   ws.data.status = "streaming";
-  const usedTools: string[] = [];
   const turn = addTurn(chat, event.messageId, assistantMessageId);
   turn.userContent = event.text;
 
@@ -982,7 +981,6 @@ async function handleChat(ws: Bun.ServerWebSocket<ConnectionState>, event: Clien
       });
 
       for (const toolCall of result.toolCalls) {
-        usedTools.push(toolCall.name);
         send(ws, {
           type: "activity",
           chatId: chat.id,
@@ -1030,8 +1028,7 @@ async function handleChat(ws: Bun.ServerWebSocket<ConnectionState>, event: Clien
       }
     }
 
-    const toolSummary = usedTools.length > 0 ? `\nVerwendete Tools: ${[...new Set(usedTools)].join(", ")}` : "";
-    const finalContent = `${assistantContent.trim() || "Canvas-Aktionen wurden ausgeführt."}${toolSummary}`;
+    const finalContent = assistantContent.trim() || "Canvas-Aktionen wurden ausgeführt.";
 
     chat.messages.push({
       id: assistantMessageId,
