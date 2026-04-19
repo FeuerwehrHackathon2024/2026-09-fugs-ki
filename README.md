@@ -37,7 +37,7 @@
 
 ---
 
-Ein KI-gestuetzter Stabsfuehrungsassistenttechnoligedemonstrator fuer den Feuerwehr-Einsatz. Entstanden beim **Hackathon2026 der Feuerwehr Muenchen**.
+Ein KI-gestuetzter Stabsfuehrungsassistenttechnoligedemonstrator fuer den Feuerwehr-Einsatz. Entstanden beim **[Hackathon2026 der Feuerwehr Muenchen](https://www.ffw-muenchen.de/hackathon2026/)**.
 
 FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und gibt diesem ueber das [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) Zugriff auf Einsatzdaten, Geodaten, Wetterdaten und Nachrichtenfunktionen — so wird die KI zum Werkzeug fuer die Stabsarbeit.
 
