@@ -49,6 +49,17 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 - **Geodaten** — Entfernungsberechnung (WGS-84) und OpenStreetMap-Abfragen (Overpass API)
 - **Wetterdaten** — Aktuelle Temperatur und 12h-Vorhersage vom Deutschen Wetterdienst (DWD)
 
+### Demo
+
+<div align="center">
+
+<img src="./media/tum-einsatz_demo-agent-chat.png" alt="Agent Chat" style="width: 22%; margin: 0.5%; display: inline-block;">
+<img src="./media/tum-einsatz_demo-einsatzfahrzeuge.png" alt="Einsatzfahrzeuge" style="width: 22%; margin: 0.5%; display: inline-block;">
+<img src="./media/tum-einsatz_demo-routen-planung.png" alt="Routenplanung" style="width: 22%; margin: 0.5%; display: inline-block;">
+<img src="./media/tum-einsatz_demo-fullscreen.png" alt="Fullscreen" style="width: 22%; margin: 0.5%; display: inline-block;">
+
+</div>
+
 ## Architektur
 
 ```
