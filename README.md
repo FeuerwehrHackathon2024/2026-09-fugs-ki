@@ -51,6 +51,27 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 
 ### Demo
 
+#### Waldbrand Perlacher Forst (agent)
+
+<div align="center">
+
+<img src="./media/demo_wildfire_perlacherforst_handover.png" alt="Waldbrand – Übergabe" style="width: 45%; margin: 0.5%; display: inline-block;">
+<img src="./media/demo_wildfire_perlacher_forst_Commmandx.png" alt="Waldbrand – CommandX" style="width: 45%; margin: 0.5%; display: inline-block;">
+
+</div>
+
+<div align="center">
+
+<video src="./media/demo_wildfire_perlacher_forst_Commmandx.mov" controls title="Waldbrand – CommandX" style="width: 45%; margin: 0.5%;"></video>
+<video src="./media/demo_wildfire_perlacherforst_handover_comprehension.mov" controls title="Waldbrand – Übergabe & Lagebild" style="width: 45%; margin: 0.5%;"></video>
+<video src="./media/demo_wildfire_perlacherforst_instagram.mov" controls title="Waldbrand – Instagram-Post" style="width: 45%; margin: 0.5%;"></video>
+<video src="./media/demo_wildfire_perlacherforst_instagram_press_statement.mov" controls title="Waldbrand – Pressemitteilung" style="width: 45%; margin: 0.5%;"></video>
+
+</div>
+
+
+#### TUM Einsatz (agentv2)
+
 <div align="center">
 
 <img src="./media/tum-einsatz_demo-agent-chat.png" alt="Agent Chat" style="width: 22%; margin: 0.5%; display: inline-block;">
@@ -60,32 +81,20 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 
 </div>
 
+<div align="center">
+
+<video src="./media/demo_hydrants_munich.mp4" controls title="Hydrants Munich" style="width: 90%; margin: 0.5%;"></video>
+
+</div>
+
+
 ## Architektur
 
-```
-                         +---------------------+
-                         |     LLM-Backend     |
-                         | (OpenAI-kompatibel) |
-                         +----------+----------+
-                                    |
-                                    v
-+----------------+       +-------------------+       +------------------+
-|    Browser     | <---> |      Agent        | <---> |     Tools        |
-|  (React Chat)  |       |  (Bun, AI SDK)    |       |  (FastMCP/Python)|
-|                |       |    Port 3001      |  MCP  |   Port 3002      |
-+----------------+       +--------+----------+       +------------------+
-                                  |                   - Geo (WGS-84, OSM)
-                                  | MCP               - Wetter (DWD)
-                                  v                   - Zeit
-                         +------------------+
-                         |    CommandX      |
-                         | (FastMCP/Python) |
-                         |   Port 3003      |
-                         +------------------+
-                          - Einsaetze (CIMgate)
-                          - Nachrichten
-                          - Alarmstichworte
-```
+<div align="center">
+
+<img src="./media/architecture_v1.png" alt="Architektur" style="width: 90%;">
+
+</div>
 
 ## Quick Start
 
@@ -126,6 +135,12 @@ Ausfuehrliche Entwicklerdokumentation: [`docs/DEV-DOCS.md`](docs/DEV-DOCS.md)
 ## Contributors
 
 Siehe [contributors.md](contributors.md) fuer die vollstaendige Liste aller Mitwirkenden.
+
+<div align="center">
+
+<img src="./media/team_fugs_ki.jpeg" alt="Team FUGS&KI" style="width: 90%;">
+
+</div>
 
 ## Lizenz
 
