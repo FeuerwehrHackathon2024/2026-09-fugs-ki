@@ -85,11 +85,31 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 
 </div>
 
+## Externe Repos (erforderlich)
+
+Zwei MCP-Dienste werden als separate Git-Repositories eingebunden und müssen
+vor dem ersten Start in das Projektverzeichnis geklont werden:
+
+| Verzeichnis | Repository | Beschreibung |
+|---|---|---|
+| `wetterdienst/` | https://github.com/fschir/WetterdienstMCPServer | DWD-Wetterdaten MCP-Server |
+| `db-timetable/` | https://github.com/jorekai/db-timetable-mcp | Deutsche Bahn Fahrplan MCP-Server |
+
+```bash
+# Im Wurzelverzeichnis dieses Repos:
+git clone https://github.com/fschir/WetterdienstMCPServer wetterdienst
+git clone https://github.com/jorekai/db-timetable-mcp db-timetable
+```
+
+> **Hinweis:** `docker compose up --build` schlägt fehl, wenn diese Verzeichnisse fehlen.
+
 ## Quick Start
 
 ### Mit Docker Compose
 
 ```bash
+# Externe Repos klonen (einmalig, siehe oben)
+
 # Konfiguration anlegen
 cp agent/config.example.json agent/config.json
 # config.json bearbeiten: LLM-Endpunkt und API-Keys eintragen
@@ -97,6 +117,10 @@ cp agent/config.example.json agent/config.json
 # Fuer CommandX: CIMgate-Zugangsdaten hinterlegen
 cp commandx/.env.example commandx/.env
 # .env bearbeiten
+
+# Fuer DB-Fahrplan: API-Key hinterlegen
+cp db-timetable/.env.example db-timetable/.env
+# .env bearbeiten: DB_API_KEY eintragen
 
 # Stack starten
 docker compose up --build

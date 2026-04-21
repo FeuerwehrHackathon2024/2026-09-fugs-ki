@@ -3,7 +3,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from tools import register_tools
 
-mcp = FastMCP("CommandX", json_response=True, host="0.0.0.0")
+mcp = FastMCP(
+    "CommandX",
+    json_response=True,
+    stateless_http=True,
+    host="0.0.0.0",
+)
 
 
 @mcp.custom_route("/health", methods=["GET"])
