@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # User-Agent Header
     commandx_user_agent: str = "insomnia/12.5.0"
 
+    # Optional: Default-Department, unter dem neue Einsätze angelegt werden.
+    # Wenn leer, wird Auto-Resolve über Department-Liste versucht (Name "Hackathon").
+    commandx_default_department_id: str = ""
+    commandx_default_department_name: str = "Hackathon"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

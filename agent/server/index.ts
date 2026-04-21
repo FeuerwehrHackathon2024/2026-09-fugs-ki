@@ -21,10 +21,32 @@ const BASE_PROMPT = await Bun.file(systemPromptPath).text();
 type ModelEntry = { label?: string; baseUrl: string; model: string; apiKey?: string };
 const modelEntries: ModelEntry[] = config.models ?? [];
 
+/**
+ * Custom fetch for llama.cpp / Gemma-4: injects `chat_template_kwargs.enable_thinking=true`
+ * und `reasoning_format="deepseek"` in jeden Request. Dadurch extrahiert llama.cpp den
+ * `<|channel>thought …<channel|>`-Reasoning-Block in ein separates `reasoning_content`-
+ * Feld und die Harmony-Channel-Tokens leaken nicht mehr in `content` (früher: raw
+ * Thinking-Text im Chat + "Failed to parse input at pos 13" aus dem Tool-Call-Parser).
+ */
+const llamaCppFetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+      body.chat_template_kwargs = { ...(body.chat_template_kwargs ?? {}), enable_thinking: true };
+      body.reasoning_format ??= "deepseek";
+      init = { ...init, body: JSON.stringify(body) };
+    } catch {
+      // non-JSON body, unverändert durchreichen
+    }
+  }
+  return fetch(input, init);
+}) as typeof fetch;
+
 const models = modelEntries.map((entry) => {
   const provider = createOpenAICompatible({
     name: entry.label ?? entry.model,
     baseURL: entry.baseUrl,
+    fetch: llamaCppFetch,
     ...(entry.apiKey ? { apiKey: entry.apiKey } : {}),
   });
   return {
@@ -57,6 +79,7 @@ type MCPServerEntry =
 
 const MAX_RETRIES = 10;
 const RETRY_DELAY_MS = 3000;
+// reload marker 13
 
 async function connectMCPServer(entry: MCPServerEntry): Promise<MCPClient | null> {
   const name = entry.label ?? ("command" in entry ? entry.command : entry.url);
@@ -176,7 +199,9 @@ const server = Bun.serve({
     if (req.method === "GET" && mapMatch) {
       const chatId = decodeURIComponent(mapMatch[1]);
       const mapData = mapStore.get(chatId) ?? null;
-      console.log(`[map] GET /api/map/${chatId} → ${mapData ? mapData.title : "null"} (store has ${mapStore.size} entries: [${[...mapStore.keys()].join(", ")}])`);
+      console.log(
+        `[map] GET /api/map/${chatId} → ${mapData ? mapData.title : "null"} (store has ${mapStore.size} entries: [${[...mapStore.keys()].join(", ")}])`,
+      );
       return Response.json({ map: mapData });
     }
 
@@ -187,7 +212,9 @@ const server = Bun.serve({
       try {
         const body = (await req.json()) as { id?: string; messages: UIMessage[] };
         const chatId = body.id ?? "default";
-        console.log(`[chat] chatId=${chatId}, body.id=${body.id}, messages=${body.messages.length}`);
+        console.log(
+          `[chat] chatId=${chatId}, body.id=${body.id}, messages=${body.messages.length}`,
+        );
         const modelMessages = await convertToModelMessages(body.messages);
 
         const mapTools = createMapTools(

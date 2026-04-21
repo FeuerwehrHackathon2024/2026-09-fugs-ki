@@ -4,6 +4,8 @@ services:
     container_name: tools
     ports:
       - "3002:8000"
+    environment:
+      TZ: Europe/Berlin
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
@@ -19,12 +21,42 @@ services:
       - "3003:8000"
     env_file:
       - ./commandx/.env
+    environment:
+      TZ: Europe/Berlin
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       start_period: 10s
+      retries: 3
+
+  wetterdienst:
+    build:
+      context: ./wetterdienst
+      dockerfile: Dockerfile.fugs
+    container_name: wetterdienst
+    ports:
+      - "3004:8823"
+    environment:
+      TZ: Europe/Berlin
+    restart: unless-stopped
+
+  db-timetable:
+    build: ./db-timetable
+    container_name: db-timetable
+    ports:
+      - "3005:8080"
+    env_file:
+      - ./db-timetable/.env
+    environment:
+      TZ: Europe/Berlin
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/mcp').catch(()=>process.exit(0))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
       retries: 3
 
   # agentv2 - New version with MCP support

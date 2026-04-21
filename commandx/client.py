@@ -70,6 +70,21 @@ class CIMgateClient:
         log.info("      → %s", resp.status_code)
         resp.raise_for_status()
         return self._remove_null_values(resp.json())
+
+    def put(self, path: str, json: dict[str, Any]) -> Any:
+        url = f"{self._base_url}/rest-api/{path.lstrip('/')}"
+        headers = self._headers()
+        log.info("PUT   %s  json=%s", url, json)
+        resp = httpx.put(
+            url,
+            headers=headers,
+            json=json,
+            verify=self._verify_ssl,
+            timeout=30,
+        )
+        log.info("      → %s", resp.status_code)
+        resp.raise_for_status()
+        return self._remove_null_values(resp.json()) if resp.content else {}
     
     def _remove_null_values(self, value):
         if isinstance(value, dict):

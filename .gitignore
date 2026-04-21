@@ -4,5 +4,9 @@ __pycache__/
 .venv/
 .env
 agent/config.json
+commandx/setup_ludwigshafen.py
+
+docs/commandx/commandx_api_description.txt
 
 .codex/
+docs/agent-vs-agentv2.md
