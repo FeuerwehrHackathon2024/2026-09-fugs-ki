@@ -60,14 +60,7 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 
 </div>
 
-<div align="center">
-
-<video src="./media/demo_wildfire_perlacher_forst_Commmandx.mov" controls title="Waldbrand – CommandX" style="width: 45%; margin: 0.5%;"></video>
-<video src="./media/demo_wildfire_perlacherforst_handover_comprehension.mov" controls title="Waldbrand – Übergabe & Lagebild" style="width: 45%; margin: 0.5%;"></video>
-<video src="./media/demo_wildfire_perlacherforst_instagram.mov" controls title="Waldbrand – Instagram-Post" style="width: 45%; margin: 0.5%;"></video>
-<video src="./media/demo_wildfire_perlacherforst_instagram_press_statement.mov" controls title="Waldbrand – Pressemitteilung" style="width: 45%; margin: 0.5%;"></video>
-
-</div>
+**Videos:** [▶ CommandX](./media/demo_wildfire_perlacher_forst_Commmandx.mov) · [▶ Übergabe & Lagebild](./media/demo_wildfire_perlacherforst_handover_comprehension.mov) · [▶ Instagram-Post](./media/demo_wildfire_perlacherforst_instagram.mov) · [▶ Pressemitteilung](./media/demo_wildfire_perlacherforst_instagram_press_statement.mov)
 
 
 #### TUM Einsatz (agentv2)
@@ -81,11 +74,7 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 
 </div>
 
-<div align="center">
-
-<video src="./media/demo_hydrants_munich.mp4" controls title="Hydrants Munich" style="width: 90%; margin: 0.5%;"></video>
-
-</div>
+**Video:** [▶ Hydrants Munich Demo](./media/demo_hydrants_munich.mp4)
 
 
 ## Architektur
