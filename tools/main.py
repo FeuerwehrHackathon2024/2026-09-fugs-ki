@@ -7,6 +7,7 @@ from geotools import register_geo_tools
 from dwdtools import register_dwd_tools
 from osmtools import register_osm_tools
 from wikitool import register_wiki_tools
+from knowledge import register_knowledge_tools
 
 mcp = FastMCP("Tools", json_response=True, host="0.0.0.0")
 
@@ -20,6 +21,7 @@ register_geo_tools(mcp)
 register_dwd_tools(mcp)
 register_osm_tools(mcp)
 register_wiki_tools(mcp)
+register_knowledge_tools(mcp)
 
 
 if __name__ == "__main__":

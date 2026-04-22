@@ -48,6 +48,15 @@ FUGS&KI verbindet eine Chat-Oberflaeche mit einem grossen Sprachmodell (LLM) und
 - **Nachrichten** — Lesen und Senden von Einsatz-Nachrichten direkt aus dem Chat
 - **Geodaten** — Entfernungsberechnung (WGS-84) und OpenStreetMap-Abfragen (Overpass API)
 - **Wetterdaten** — Aktuelle Temperatur und 12h-Vorhersage vom Deutschen Wetterdienst (DWD)
+- **Knowledge Hub** — Hochladen und Verwalten von Dokumenten; automatische Indexierung als Embeddings fuer kontextuelle Abfragen
+
+### Knowledge Hub
+
+Die Knowledge Hub ermöglicht es, Feuerwehr-relevante Dokumente (z.B. Einsatzrichtlinien, Prozessdokumentationen) hochzuladen. Diese werden automatisch mit einem Embedding-Service indexiert und in einer Vektordatenbank (Qdrant) gespeichert. Bei Abfragen nutzt die KI das Retrieval-Augmented Generation (RAG) Verfahren, um relevante Dokumenten-Inhalte kontextabhängig einzubeziehen.
+
+- **Admin-Interface** — Dokumente verwalten, hochladen, löschen
+- **Automatische Indexierung** — PDF und Dokumenten-Verarbeitung mit Embeddings
+- **Kontextuelle Abfragen** — KI bezieht Dokumenten-Wissen in Chat-Antworten ein
 
 ### Demo
 

@@ -144,3 +144,22 @@ export function deleteSession(sessionId: string): void {
   const stmt = db.prepare(`DELETE FROM sessions WHERE id = ?`);
   stmt.run(sessionId);
 }
+
+export function getSystemPrompt(): string | null {
+  const row = db.prepare(`SELECT value FROM settings WHERE key = 'system_prompt'`).get() as { value: string } | null;
+  return row?.value ?? null;
+}
+
+export function setSystemPrompt(content: string): void {
+  db.prepare(`
+    INSERT OR REPLACE INTO settings (key, value, updated_at)
+    VALUES ('system_prompt', ?, ?)
+  `).run(content, new Date().toISOString());
+}
+
+export function initSystemPromptIfMissing(fallback: string): void {
+  const existing = getSystemPrompt();
+  if (existing === null) {
+    setSystemPrompt(fallback);
+  }
+}

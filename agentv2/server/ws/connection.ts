@@ -3,7 +3,7 @@ import { getRuntimeModel, type RuntimeConfig } from "../config/models";
 import { streamOpenAICompatibleChat, type OpenAIConversationMessage, type OpenAIToolDefinition, type OpenAIToolCall } from "../openai";
 import { type CanvasItem, type CanvasMapItem, type CanvasMapPolygon, type CanvasMapLabel, type CanvasMapWind } from "../../shared/canvas";
 import { createTurn, summarizeTurn, type ChatTurn, type TurnActionItem } from "../../shared/turn";
-import { saveSession, loadSession } from "../db/persistence";
+import { saveSession, loadSession, getSystemPrompt } from "../db/persistence";
 import { createSessionCookieHeader } from "../http/cookies";
 import {
   createChartItem,
@@ -98,8 +98,6 @@ interface ToolExecutionResult {
 const sessions = new Map<string, SessionState>();
 const MAX_TOOL_ROUNDS = 3;
 const MAX_CANVAS_ITEMS = 12;
-const systemPromptPath = new URL("../../system-prompt.md", import.meta.url);
-const SYSTEM_PROMPT = await Bun.file(systemPromptPath).text();
 
 function send(ws: Bun.ServerWebSocket<ConnectionState>, event: ServerEvent) {
   ws.send(JSON.stringify(event));
@@ -928,10 +926,12 @@ async function handleChat(ws: Bun.ServerWebSocket<ConnectionState>, event: Clien
       ? `\n\nExterne Tools (${mcpToolList.length} verfügbar — rufe diese aktiv auf wenn passend):\n${mcpToolList.map((t) => `- ${t.function.name}: ${t.function.description}`).join("\n")}`
       : "";
 
+  const currentSystemPrompt = getSystemPrompt() ?? "";
+
   const conversation: OpenAIConversationMessage[] = [
     {
       role: "system",
-      content: `${SYSTEM_PROMPT}\n\nCanvas-Tools:\n- canvas_create_map: Karte anlegen mit Zentrum, Zoom, initialen Markern/Bereichen/Routen\n- canvas_map_add_marker: Einzelnen Marker zur bestehenden Karte hinzufügen (label, kind, lat, lng) – bevorzuge dieses Tool für schrittweisen Aufbau\n  Fahrzeug-Kinds mit Emoji: firetruck=🚒 Löschfahrzeug, ladder=🚒 Drehleiter, command=⭐ Einsatzleitung, ambulance=🚑 Rettungsdienst, staging=🅿️ Bereitstellungsraum\n- canvas_map_add_area: Kreisbereich einzeichnen (Sperrzone, Gefahrenbereich, Wasserentnahme)\n- canvas_map_add_route: Pendelroute oder Zufahrt einzeichnen (mind. 2 Punkte)\n- canvas_map_add_polygon: Unregelmäßige Fläche (Evakuierungszone, Gebäude, Abschnitt, Perimeter)\n- canvas_map_add_label: Freier Textpunkt (Sammelpunkt, Triage, Bereitstellungsraum)\n- canvas_map_add_wind: Windpfeil mit Richtung und Geschwindigkeit\n- canvas_create_diagram: Strukturdiagramme (flow, radial, timeline, matrix)\n- canvas_create_chart: Zahlenreihen als Balken-, Linien-, Flächen- oder XY-Chart\n- canvas_add_image: Bildplatzhalter\n- canvas_add_note: Textnotiz\n- canvas_clear: Canvas leeren\n\nKarten-Workflow für Lagebilder:\n1. canvas_create_map mit Einsatzort als Zentrum (centerLat/centerLng)\n2. Dann canvas_map_add_marker für jeden Punkt (Brandstelle, Hydranten, Fahrzeuge) – jeder Marker MUSS andere lat/lng haben\n3. Für Hydranten möglichst zuerst analyze_hydrants nutzen und den ermittelten Durchfluss in flowRateLpm übernehmen\n4. canvas_map_add_area für Sperrzonen\n5. canvas_map_add_route für Pendelrouten\n\nKOORDINATEN-REGELN:\n- Jeder Marker braucht eindeutige lat/lng – niemals zwei Marker mit identischen Koordinaten\n- Das Tool gibt nach jedem Aufruf mapContext.center zurück – nutze diese Kartenmitte als Basis\n- Wenn keine exakte Adresse bekannt: Offset vom Zentrum schätzen (±0.0001–0.002 Grad ≈ 10–200m)\n- Beispiel: Zentrum 48.1374, 11.5755 → Hydrant Nord: 48.1384, 11.5755 | Hydrant Ost: 48.1374, 11.5775\n- Nutze Geocoding-Tools für echte Adressen wenn vorhanden\n- Wenn analyze_hydrants einen Hydranten liefert, übernimm Flow rate in flowRateLpm und setze flowRateEstimated=true, falls der MCP-Output den Wert als geschätzt markiert${mcpSection}`,
+      content: `${currentSystemPrompt}\n\nCanvas-Tools:\n- canvas_create_map: Karte anlegen mit Zentrum, Zoom, initialen Markern/Bereichen/Routen\n- canvas_map_add_marker: Einzelnen Marker zur bestehenden Karte hinzufügen (label, kind, lat, lng) – bevorzuge dieses Tool für schrittweisen Aufbau\n  Fahrzeug-Kinds mit Emoji: firetruck=🚒 Löschfahrzeug, ladder=🚒 Drehleiter, command=⭐ Einsatzleitung, ambulance=🚑 Rettungsdienst, staging=🅿️ Bereitstellungsraum\n- canvas_map_add_area: Kreisbereich einzeichnen (Sperrzone, Gefahrenbereich, Wasserentnahme)\n- canvas_map_add_route: Pendelroute oder Zufahrt einzeichnen (mind. 2 Punkte)\n- canvas_map_add_polygon: Unregelmäßige Fläche (Evakuierungszone, Gebäude, Abschnitt, Perimeter)\n- canvas_map_add_label: Freier Textpunkt (Sammelpunkt, Triage, Bereitstellungsraum)\n- canvas_map_add_wind: Windpfeil mit Richtung und Geschwindigkeit\n- canvas_create_diagram: Strukturdiagramme (flow, radial, timeline, matrix)\n- canvas_create_chart: Zahlenreihen als Balken-, Linien-, Flächen- oder XY-Chart\n- canvas_add_image: Bildplatzhalter\n- canvas_add_note: Textnotiz\n- canvas_clear: Canvas leeren\n\nKarten-Workflow für Lagebilder:\n1. canvas_create_map mit Einsatzort als Zentrum (centerLat/centerLng)\n2. Dann canvas_map_add_marker für jeden Punkt (Brandstelle, Hydranten, Fahrzeuge) – jeder Marker MUSS andere lat/lng haben\n3. Für Hydranten möglichst zuerst analyze_hydrants nutzen und den ermittelten Durchfluss in flowRateLpm übernehmen\n4. canvas_map_add_area für Sperrzonen\n5. canvas_map_add_route für Pendelrouten\n\nKOORDINATEN-REGELN:\n- Jeder Marker braucht eindeutige lat/lng – niemals zwei Marker mit identischen Koordinaten\n- Das Tool gibt nach jedem Aufruf mapContext.center zurück – nutze diese Kartenmitte als Basis\n- Wenn keine exakte Adresse bekannt: Offset vom Zentrum schätzen (±0.0001–0.002 Grad ≈ 10–200m)\n- Beispiel: Zentrum 48.1374, 11.5755 → Hydrant Nord: 48.1384, 11.5755 | Hydrant Ost: 48.1374, 11.5775\n- Nutze Geocoding-Tools für echte Adressen wenn vorhanden\n- Wenn analyze_hydrants einen Hydranten liefert, übernimm Flow rate in flowRateLpm und setze flowRateEstimated=true, falls der MCP-Output den Wert als geschätzt markiert${mcpSection}`,
     },
     ...chat.messages.map((message) => ({
       role: message.role,

@@ -1,0 +1,40 @@
+{
+  "name": "admin-ui",
+  "description": "Admin UI for fugs-ki — modular administration interface",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun-tasks dev:frontend ::: dev:backend",
+    "dev:frontend": "vite --port 5174",
+    "dev:backend": "bun --watch server/index.ts",
+    "build": "tsc -b && vite build",
+    "start": "NODE_ENV=production bun server/index.ts",
+    "check": "biome check",
+    "check:fix": "biome check --write",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@fontsource-variable/google-sans-flex": "^5.2.2",
+    "clsx": "^2.1.1",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-dropzone": "^14.3.8",
+    "react-router-dom": "^7.6.2",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/bun": "^1.3.12",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "bun-tasks": "^0.1.2",
+    "tailwindcss": "^4.2.2",
+    "typescript": "~6.0.2",
+    "vite": "8.0.8"
+  }
+}
