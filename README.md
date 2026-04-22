@@ -145,6 +145,30 @@ cd commandx && uv sync && uv run python main.py
 
 Ausfuehrliche Entwicklerdokumentation: [`docs/DEV-DOCS.md`](docs/DEV-DOCS.md)
 
+## Supported Hardware
+
+Beim Hackathon stand als Entwicklungs- und Demo-System ein **Framework Desktop DIY Edition** mit **AMD Ryzen AI Max+ 395** und **128 GB RAM** zur Verfuegung. Auf diesem System wurde das LLM bislang lokal ausgefuehrt.
+
+### AMD Referenzsystem: Framework Desktop DIY Edition
+
+- **Rechenplattform** — AMD Ryzen AI Max+ 395
+- **Prozessorarchitektur** — AMD x86-64 APU
+- **CPU-Konfiguration** — `16 Kerne / 32 Threads`
+- **Arbeitsspeicher** — `128 GB LPDDR5x-8000`
+- **Massenspeicher** — `2x M.2 2280 NVMe PCIe 4.0 x4`
+- **Einordnung** — bisherige Entwicklungs- und Demo-Plattform fuer lokal ausgefuehrte LLMs
+
+### NVIDIA Referenzsystem: DGX Spark
+
+- **Rechenplattform** — NVIDIA GB10 Grace Blackwell Superchip
+- **Prozessorarchitektur** — Arm CPU + Blackwell GPU
+- **CPU-Konfiguration** — `20 Kerne / 20 Threads` (`10x Cortex-X925` + `10x Cortex-A725`)
+- **Arbeitsspeicher** — `128 GB LPDDR5x` Unified Memory
+- **Massenspeicher** — `4 TB NVMe M.2`
+- **Praxiswert** — etwa `~60 Token/s` in dieser FUGS&KI-Konfiguration
+
+Der beobachtete Durchsatz auf dem DGX Spark wurde auch dann erreicht, wenn der komplette Docker-Stack inklusive aller eingesetzten MCP-Server auf demselben System deployed war.
+
 ## Contributors
 
 Siehe [contributors.md](contributors.md) fuer die vollstaendige Liste aller Mitwirkenden.
