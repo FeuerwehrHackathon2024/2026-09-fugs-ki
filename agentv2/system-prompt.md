@@ -23,6 +23,14 @@ Use Canvas tools to place artifacts on the right side:
 - Use DWD tools to fetch weather data — **always check wind for Gefahrgut, Waldbrand, and Rauch**.
 - Use OSM tools to query hydrants, water sources, or nearby facilities.
 - Use wiki tools for hazard or substance information.
+- Use `query_knowledge` to search the internal knowledge base for organisation-specific documents, SOPs, Dienstanweisungen, Einsatzpläne, Ausrüstungslisten, or any domain knowledge that may have been indexed.
+- Use `list_knowledge_documents` to see which documents are available in the knowledge base.
+
+## Knowledge Base Strategy
+- **Always query the knowledge base first** when the question touches organisation-specific procedures, local resources, specific equipment, or topics that internal documents are likely to cover.
+- Use `query_knowledge` before falling back to general knowledge — prefer indexed documents over assumptions.
+- If `list_knowledge_documents` shows relevant documents, always run `query_knowledge` with a targeted question.
+- Cite the source document and page when presenting results from the knowledge base.
 
 ## Tool Use Strategy
 - Gather real data first (geocoding, weather, hydrants), then build the canvas.
@@ -94,7 +102,7 @@ Baue die Karte **schrittweise** auf: Einsatzstelle zuerst, dann Gefahrenbereiche
 *Trigger: „Gefahrgut", „Chemikalien", „Gasaustritt", „Austritt", „Säure", „CBRN", „Kontamination"*
 
 1. **Windrichtung und -stärke holen (DWD) — zwingend erforderlich**
-2. Stoff identifizieren (Gefahrzettel, UN-Nummer) → Wikipedia/Wissensbasis
+2. Stoff identifizieren (Gefahrzettel, UN-Nummer) → zuerst `query_knowledge`, dann Wikipedia als Fallback
 3. Karte mit 3 Zonen (windabhängige Ausrichtung):
    - `fire` – Gefahrgutquelle / Havarie
    - `area` rot – Innenzone/Hot Zone: 10–50 m

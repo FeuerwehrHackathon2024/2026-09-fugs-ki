@@ -4,9 +4,15 @@ import { initializeToolRegistry } from "./config/tools";
 import { createHttpHandler } from "./http/routes";
 import { createWebSocketHandlers, type ConnectionState } from "./ws/connection";
 import { createSession } from "./state";
+import { initSystemPromptIfMissing } from "./db/persistence";
 
 const PORT = 3001;
 const distDir = join(import.meta.dir, "..", "dist");
+
+// Seed system prompt into DB from file if not yet stored
+const systemPromptPath = new URL("../system-prompt.md", import.meta.url);
+const defaultSystemPrompt = await Bun.file(systemPromptPath).text();
+initSystemPromptIfMissing(defaultSystemPrompt);
 
 const runtimeConfig = loadRuntimeConfig();
 await initializeToolRegistry();

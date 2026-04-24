@@ -1,0 +1,46 @@
+@import "@fontsource-variable/google-sans-flex/wght.css";
+@import "tailwindcss";
+
+@theme {
+  --font-main: "Google Sans Flex Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --color-surface: oklch(0.985 0.004 85);
+  --color-surface-alt: oklch(0.955 0.007 78);
+  --color-surface-raised: oklch(0.935 0.009 78);
+  --color-border: oklch(0.895 0.01 78);
+  --color-text: oklch(0.185 0.022 52);
+  --color-text-muted: oklch(0.5 0.014 55);
+  --color-accent: oklch(0.5 0.145 45);
+  --color-accent-dim: oklch(0.42 0.1 45);
+  --color-accent-soft: oklch(0.95 0.025 45);
+  --color-sidebar: oklch(0.2 0.018 52);
+  --color-sidebar-text: oklch(0.85 0.008 78);
+  --color-sidebar-muted: oklch(0.55 0.01 78);
+  --color-sidebar-active: oklch(0.5 0.145 45);
+  --color-sidebar-active-bg: oklch(0.5 0.145 45 / 0.15);
+}
+
+body {
+  font-family: var(--font-main);
+  color: var(--color-text);
+  background: var(--color-surface);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

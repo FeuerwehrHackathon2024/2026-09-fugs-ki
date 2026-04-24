@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { toPublicRuntimeConfig, type RuntimeConfig } from "../config/models";
 import { parseSessionCookie, createSessionCookieHeader } from "./cookies";
-import { loadSession, saveSession } from "../db/persistence";
+import { loadSession, saveSession, getSystemPrompt, setSystemPrompt } from "../db/persistence";
 import { getMCPServerStatus } from "../services/mcp";
 
 interface HttpHandlerOptions {
@@ -19,6 +19,19 @@ export function createHttpHandler({ runtimeConfig, distDir }: HttpHandlerOptions
 
     if (req.method === "GET" && url.pathname === "/api/mcp/status") {
       return Response.json(getMCPServerStatus());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/system-prompt") {
+      return Response.json({ content: getSystemPrompt() ?? "" });
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/system-prompt") {
+      const body = await req.json() as { content?: unknown };
+      if (typeof body.content !== "string") {
+        return Response.json({ error: "content must be a string" }, { status: 400 });
+      }
+      setSystemPrompt(body.content);
+      return Response.json({ ok: true });
     }
 
     if (req.method === "GET" && url.pathname === "/api/models") {

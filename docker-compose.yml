@@ -1,4 +1,35 @@
 services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/bin/bash", "-c", "exec 3<>/dev/tcp/localhost/6333 && echo -e 'GET /healthz HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '200' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  embedding-service:
+    build: ./knowledge-hub/embedding-service
+    container_name: embedding-service
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
   tools:
     build: ./tools
     container_name: tools
@@ -6,7 +37,14 @@ services:
       - "3002:8000"
     environment:
       TZ: Europe/Berlin
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      EMBEDDING_SERVICE_URL: http://embedding-service:8000
+      COLLECTION_NAME: pdf_knowledge
     restart: unless-stopped
+    depends_on:
+      embedding-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 30s
@@ -83,7 +121,32 @@ services:
       timeout: 3s
       retries: 3
 
+  admin-ui:
+    build: ./admin-ui
+    container_name: admin-ui
+    ports:
+      - "3005:3004"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - EMBEDDING_SERVICE_URL=http://embedding-service:8000
+      - COLLECTION_NAME=pdf_knowledge
+      - AGENTV2_URL=http://agentv2:3001
+    restart: unless-stopped
+    depends_on:
+      embedding-service:
+        condition: service_healthy
+      agentv2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
 volumes:
   agentv2-data:
+    driver: local
+  qdrant-data:
     driver: local
 

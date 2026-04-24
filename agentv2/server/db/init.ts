@@ -82,6 +82,15 @@ db.run(`
   )
 `);
 
+// Settings table (key/value store for configuration like system prompt)
+db.run(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
+`);
+
 // Indexes for common queries
 db.run(`CREATE INDEX IF NOT EXISTS idx_chats_session_id ON chats(session_id)`);
 db.run(`CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)`);
